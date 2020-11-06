@@ -1,54 +1,52 @@
 ---
 title: "Text_Mining_in_R"
 author: "Shelmith Macharia"
-date: "11/07/2020"
+date: "7th November, 2020"
 output:
   html_document: default
   pdf_document: default
 ---
 ---
-### **Scope of the session**
+In this training, we will explore text mining using tidy data principles. We will cover the following:
 
-* Some coding basics
 * Reading text data
 * Tidying text data
 * Visualization 
+* Term frequency inverse document frequency (tf-idf)
 * Sentiment analysis
-* Practicals
-
-### **Some coding basics**
-
-* Rstudio layout
-* Working with projects
-* Some R markdown basics
-* Running your code
-* Installing and loading packages
 
 
-```{R, setup, results ='hide'}
+```{r}
+#Clear memory
+rm(list = ls())
+```
+
+```{r, setup, message =FALSE}
 #install.packages(c("tidyverse","tidytext"),dependencies = T)
 require(tidytext)
 library(tidyverse)
 library(readtext)
+library(wordcloud)
+library(gridExtra)
+library(pdftools)
 
 ```
 
 ### 2. **Data**
-We will use the Presidential briefs on COVID 19 since March 2020.
+We will use the Presidential speeches on COVID 19 since March 2020.
 
 
 
 ### 3. **Read the data**
+There are various ways of reading text data.
 
-There exists a number of ways of reading data.
-- Copy and paste the data on R
-- Read a from a text, word or pdf file
-- Read directly from the website
+- Copy and paste text data into R
+- Read a from a text file, word file or pdf file
 
 
-```{R, results ='hide'}
+```{r}
 
-####Reading a txt file
+#Copy and paste data into R
 
 Data <- c("Fellow Kenyans,
 
@@ -62,162 +60,219 @@ The measures we have taken are firm and indeed have been impactful. The nighttim
 
 ")
 
-Data
-Data1 <- read.delim("Speeches/March.txt", sep = "\t")
-Data1
-Data2 <- read.table("Speeches/March.txt", sep = "\t")
+
+#Read a text file
+Data_text <- read.delim("Speeches/March.txt", sep = "\t")
+
+Data_text2 <- read.table("Speeches/March.txt", sep = "\t")
+
+#Read a pdf document
+Data_pdf <- pdf_text("July.pdf")
 ```
 
 ### **Reading data using the readtext package**
-- Read the data using the readtext function from the readtext package. 
+- Read text data using the readtext function from the readtext package. 
 - The package is used for importing and handling plain and formatted text files. 
 - The function is able to read different file types e.g. txt, csv, json, xml, pdf, doc and docx among others.
 - Handles multiple files and file types.
 
-```{R}
+```{r}
 
 ## read one file
-Text1 <- readtext("Speeches/March.txt")
+Text1 <- readtext("Speeches/May1.pdf")
 Text1
 
 ## read multiple txt files
-Text2 <- readtext("Speeches/*.txt")
+Text2 <- readtext("Speeches/*.pdf")
 Text2
 
 ## read all files
-Text3 <- readtext("Speeches/")
-Text3
+Speeches <- readtext("Speeches/")
+Speeches
 
-## Reading data as a corpus
 ```
 
 ### **Tidying the data**
 
 - Once we have loaded the data, the next step is to tidy the data.
-- What is tidy text data?
 - Tidy text data has one observation per row.
-- We use unnest_tokens() to convert the data into a tidy format. Unnest_tokens() also removes punctuation, converts all words to lower case and also retains other columns.
-- We will also remove stopwords. Stop words are words are very common in an analysis and are not informative.
+- We use unnest_tokens() to convert the data into a tidy format. Unnest_tokens() also removes punctuation, converts all words to lower case and retains other columns.
+- We will also remove stopwords. Stop words are words that are very common in text data but are not informative e.g. of, this, and, because e.t.c.
+- We will also remove numbers and funny symbols from the data.
+- tidytext functions work well with data frames.
 
-```{R}
-#### Put the data into to a dataframe
-Data4 <- tibble(line =1,text = Data)
+```{r}
+#### Data frame
+Data4 <- tibble(text = Data)
 #### Unnest tokens and remove stopwords
 Data5 <- Data4 %>%
   unnest_tokens(word, text) %>% 
-  anti_join(stop_words) %>% count(word,sort = T)
-Data5
+  count(word,sort = T)
 
-#### Remove numbers
-Data6 <- Data5[-grep("^[0-9]+", Data5$word),]
-Data6
-
-
-### Analysis on multiple datasets
-Text11 <- Text1 %>% tibble() %>%
-  unnest_tokens(word, text) %>% 
-  anti_join(stop_words) %>% count(word,sort = T)
-Text11
-
-Text12 <- Text11[-grep("^[0-9]+", Text11$word),] %>% filter(word != "page")
-Text12
-
-
-
-####
-Text22 <- Text3 %>% tibble() %>% 
-  unnest_tokens(word, text) %>% 
-  anti_join(stop_words) %>% group_by(doc_id) %>% count(word,sort = T)
-
-
-Text23 <- Text22[-grep("^[0-9]+", Text22$word),] %>% filter(word != "page")
-A <- Text23 %>% filter(doc_id == "July2.txt")
-A
-
-
-
+##anti_join functions looks for words in our dataset that are in the stop_words dictionary and removes them from our dataset.
+Data6 <- Data5 %>% anti_join(stop_words) %>% 
+  count(word,sort = T)
+  
 ```
 
-### **Visualisation**
-Now the data is ready for visualisation with ggplot2.
+
+### **Removing numbers and symbols**
+- We can use the gsub function: gsub(pattern, replacement, x).
+- sub function is similar to gsub function. The only difference between the two is, sub replaces only the first match.
 
 ```{R}
-### visualisations
-A <- Text23 %>%
-  filter(n > 10) %>%
-  mutate(word = reorder(word, n)) %>%
-  ggplot(aes(word, n)) +
-  geom_col() +
-  xlab(NULL) +
-  coord_flip()
-A
+x <- "2020 has been a 2020 hard year"
+Numbers <- sub("2020","",x); Numbers
+Numbers1 <- gsub("2020", "",x); Numbers1
+```
 
-B <- Text12 %>%
-  filter(n > 5) %>%
+- Other string manipulation functions are; grep , grepl, substr, stringr functions, regexpr.
+- grep and grepl are used for pattern checking and string replacement. 
+- grepl returns TRUE when a pattern is found in the corresponding character string.
+-grep returns returns a vector of indices of the character strings that contains the pattern.
+- We will use grep function to remove numbers from our dataset.
+
+```{r}
+Names <- c("Faith, Shelmith", "Shelmith2"); Names
+grep("Fa",Names)
+grepl("Fa", Names)
+
+
+#### Multiple datasets
+Speeches_tidy <- Speeches %>% tibble() %>% 
+  unnest_tokens(word, text) %>% 
+  anti_join(stop_words) %>%
+  group_by(doc_id) %>% 
+  count(word,sort = T) %>%
+  ungroup()
+
+
+Speeches_tidy[-grep("^[0-9]+", Speeches_tidy$word),] 
+```
+
+### **Visualization**
++ Now the data is ready for visualization.
+
+```{r,warning = FALSE}
+## word cloud
+Speeches_tidy %>% 
+  with(wordcloud(unique(word), n, max.words = 50, color = c( "blue", "red"),scale = c(3,0.3) ))
+
+### Bar chart
+
+
+Speech_bar <- Speeches %>% tibble()%>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words) %>%
+  count(doc_id,word, sort = TRUE) %>%
+  filter( n>8) %>%
+  ungroup() 
+
+May <- Speech_bar %>% filter(doc_id == "May1.pdf") %>%
   mutate(word = reorder(word, n)) %>%
   ggplot(aes(word, n)) +
-  geom_col() +
-  xlab(NULL) +
-  coord_flip()
-B
-library(gridExtra)
-grid.arrange(A, B)
+    geom_col() +
+    xlab("word") + 
+    ylab("frequency") +
+    ggtitle("Most Frequently Used Words in May") + theme(plot.title = element_text(size=10))+
+    coord_flip()
+
+April <- Speech_bar %>% filter(doc_id == "April1.txt") %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+    geom_col() +
+    xlab("word") + 
+    ylab("frequency") +
+    ggtitle("Most Frequently Used Words in April") +
+  theme(plot.title = element_text(size=10)) +
+    coord_flip()
+
+
+June <- Speech_bar %>% filter(doc_id == "June.txt") %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+    geom_col() +
+    xlab("word") + 
+    ylab("frequency") +
+    ggtitle("Most Frequently Used Words in June") +
+   theme(plot.title = element_text(size=10)) +
+    coord_flip()
+
+July <- Speech_bar %>% filter(doc_id == "July1.txt") %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+    geom_col() +
+    xlab("word") + 
+    ylab("frequency") +
+    ggtitle("Most Frequently Used Words in July")+
+   theme(plot.title = element_text(size=10)) +
+    coord_flip()
+
+
+grid.arrange(April, May, June, July, ncol =2)
+
+
 ```
 
 ### **Term frequency and inverse document frequency (tfidf)**
 - tf-idf checks how important a word is to a document in a collection of documents.
-- Used as a weighting facttor in text mining.
+- Used as a weighting factor in text mining.
+- Note that tf-idf values are zero for very common words.
 
-```{R}
+- $idf(term) = ln (\frac{n documents} {n documents containing term})$
 
-Text22 <- Text3 %>% tibble() %>% 
-  unnest_tokens(word, text) %>% count(doc_id,word,sort = T)
+- $tfidf = tf * idf$
 
 
-Text23 <- Text22[-grep("^[0-9]+", Text22$word),] %>% filter(word != "page")
-Text23
+```{r}
+
+Speech_words <- Speeches %>% 
+  tibble() %>% 
+  unnest_tokens(word, text) %>% 
+  count(doc_id,word,sort = T)
+
+
+Speech_words[-grep("^[0-9]+", Speech_words$word),] %>% filter(word != "page")
+Speech_words
 
 ## Total words
-total_words <- Text23 %>% group_by(doc_id) %>% 
+total_words <- Speech_words %>% group_by(doc_id) %>% 
   summarize(total = sum(n))
-## Left join
-Text24 <- left_join(Text23, total_words)
-Text24
+total_words
+
+## Left join - keeps rows that are found in both datasets and rows that only found in Speech_words
+Speech_tf <- left_join(Speech_words, total_words)
+Speech_tf
 
 ### term frequency
 
-Text25 <- Text24 %>% mutate(rank = row_number(),tf = n/total)
-Text25
+Speech_tf %>% mutate(rank = row_number(),tf = n/total)
+
 
 ### bind tf-idf function
 
-Speech_words <- Text24 %>%
+Speech_tfidf <- Speech_tf %>%
   bind_tf_idf(word, doc_id , n) %>% arrange(desc(tf_idf))
-Speech_words %>% filter(doc_id == "March.pdf") 
+Speech_tfidf %>% filter(doc_id == "July1.txt") 
 
 ```
-- n is the number of times the word is used in that speech.
-- total is the total number of words in that speech.
-- The words with the highest frequency are the stop words.
-- We now look at the distribution n/total for each speech (the number of times a word appears in a speech divided by the total number of terms (words) in that speech).
-- Note that tf-idf values are zero for very common words.
-
+ 
 
 
 
 ### **Sentiment analysis/ opinion mining**
 
 - Sentiment analysis provides a way to understand the attitudes and opinions expressed in texts.
-- Once text data is in a tidy data structure, sentiment analysis can be implemented using inner join.
+- Once text data is in a tidy data structure, sentiment analysis can be implemented using inner_join().
 - There are a variety of methods and dictionaries that exist for sentiment analysis.
-- tidytext provides access to three sentiment lexicons/dictionaries; afinn, bing, nrc.
-- Lexicons are lists of words with some scoring.
+- tidytext provides access to three sentiment lexicons/dictionaries; afinn, bing and nrc.
+- Lexicons are lists of words that have some scoring.
 - bing classifies sentiments into two; positive and negative sentiments.
-- afinn uses a scoring of between -5 and 5.
+- afinn uses a scoring of between -5 and 5. Negative scores represent negative sentiments while positive scores represent positive sentiments.
 - nrc lexicon categorizes words in a binary fashion (“yes”/“no”) into categories of positive, negative, anger, anticipation, disgust, fear, joy, sadness, surprise, and trust.
 - The total sentiments of  document are obtained by adding up the individual sentiment scores for each word in the text.
 
-```{R}
+```{r}
 
 ##get the dictionaries
 get_sentiments("afinn")
@@ -226,93 +281,30 @@ get_sentiments("nrc")
 ```
 
 
-```{R}
+```{r}
 
-Sentiments <- Text3 %>% tibble() %>% 
+Sentiments <- Speeches %>% tibble() %>% 
   unnest_tokens(word, text) %>% 
   anti_join(stop_words) %>% group_by(doc_id) %>% inner_join(get_sentiments("bing"))
 Sentiments
 
 Sentiments %>% filter(doc_id == "May1.txt") %>% group_by(sentiment) %>% count(sentiment, sort = T)
 
-########Total sentiments
-
-
 ```
 
 
-
-
-### **Practice questions**
+### **Group exercises**
 The data to be used for this practice is in the exercises folder. 
 Perform the following tasks:
 
 1. Load the data into Rstudio
 2. Convert the data into a tidy text format, remove stopwords and numbers
 3. Identify the 10 most common words from each speech.
+4. Show the most 10 common words on a ggplot chart and a word cloud.
 4. Using tf-idf, identify 10 most important words for each speech
 5. Perform sentiment analysis using the "bing" lexicon and identify how many words were positive and how many were negative.
 
 
-### **Solutions**
-```{R}
-#Load the data into R studio
-Practice <- readtext("Exercises/")
-
-#Convert the data into a tidy text format and remove stopwords
-Practice_tidy <- Practice %>% tibble() %>%
-  unnest_tokens(word, text) %>%
-  anti_join(stop_words) 
-Practice_tidy
-
-#Identify the 10 most common words
-#August speech
-Practice_August <- Practice_tidy %>% filter(doc_id == "August.docx") %>% count(doc_id,word, sort = T)
-Practice_August
-
-#September speech
-Practice_September <- Practice_tidy %>% filter(doc_id == "September.txt") %>% count(doc_id,word, sort = T) %>% filter(word != "â")
-Practice_September
-
-#November speech
-Practice_November <- Practice_tidy %>% filter(doc_id == "November.pdf") %>% count(doc_id,word, sort = T) 
-Practice_November
-
-#Using tf-idf, identify 10 most important words for each speech
-
-Practice_tidy1 <- Practice %>% tibble() %>%
-  unnest_tokens(word, text)%>% count(doc_id,word,sort = T)
-
-## Total words
-
-total_words1 <- Practice_tidy1 %>% group_by(doc_id) %>% 
-  summarize(total = sum(n))
-
-## Left join
-Practice_tidy2 <- left_join(Practice_tidy1, total_words1)
-Practice_tidy2
-
-##tfidf
-Practice_tfidf <- Practice_tidy2 %>%
-  bind_tf_idf(word, doc_id , n) %>% arrange(desc(tf_idf)) 
-Practice_tfidf
-
-#identify 10 most common words from each speech
-Practice_tfidf_August <- Practice_tfidf %>% filter(doc_id == "August.docx") 
-Practice_tfidf_August
-
-Practice_tfidf_September <- Practice_tfidf %>% filter(doc_id == "September.txt") 
-Practice_tfidf_September
-
-
-Practice_tfidf_November <- Practice_tfidf %>% filter(doc_id == "November.pdf") 
-Practice_tfidf_November
-
-#Sentiment analysis
-Practice_Sentiment <- Practice_tidy %>% inner_join(get_sentiments("bing")) %>% count(sentiment, sort = T)
-Practice_Sentiment
-
-```
 
 
 ### **Contacts**
@@ -321,7 +313,6 @@ Reach me on:
 - Twitter: **@Macharia_Shel**
 - LinkedIn: **Shelmith Macharia**
 - Email: **shelmithmacharia@gmail.com**
-
 
 ##### Thank you! `r emo::ji("smile")`
 
