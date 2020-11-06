@@ -1,7 +1,7 @@
 ---
 title: "Text_Mining_in_R"
 author: "Shelmith Macharia"
-date: "10/30/2020"
+date: "11/07/2020"
 output:
   html_document: default
   pdf_document: default
