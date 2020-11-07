@@ -22,13 +22,14 @@ rm(list = ls())
 ```
 
 ```{r, setup, message =FALSE}
-#install.packages(c("tidyverse","tidytext"),dependencies = T)
+#install.packages(c("tidyverse","tidytext","readtext","wordcloud","gridExtra","pdftools","textdata"),dependencies = T)
 require(tidytext)
 library(tidyverse)
 library(readtext)
 library(wordcloud)
 library(gridExtra)
 library(pdftools)
+library(textdata)
 
 ```
 
@@ -111,7 +112,7 @@ Data5 <- Data4 %>%
 
 tidytext::stop_words
 ##anti_join functions looks for words in our dataset that are in the stop_words dictionary and removes them from our dataset.
-Data6 <- Data5 %>% anti_join(stop_words) %>% 
+Data6 <- Data5 %>% anti_join(stop_words) 
   
 ```
 
@@ -310,9 +311,54 @@ Perform the following tasks:
 1. Load the data into Rstudio
 2. Convert the data into a tidy text format, remove stopwords and numbers
 3. Identify the 10 most common words from each speech.
-4. Show the most 10 common words on a ggplot bar chart and a word cloud.
 4. Using tf-idf, identify 10 most important words from each speech.
 5. Perform sentiment analysis using the "bing" lexicon and identify how many words were positive and how many were negative.
+
+
+### **Solutions**
+```{r}
+#Load the data into R studio
+Practice <- readtext("Exercises/")
+
+#Convert the data into a tidy text format and remove stopwords
+Practice_tidy <- Practice %>% tibble() %>%
+  unnest_tokens(word, text) %>%
+  anti_join(stop_words) 
+Practice_tidy
+
+#Identify the 10 most common words
+#August speech
+Practice_August <- Practice_tidy %>% filter(doc_id == "August.docx") %>% count(doc_id,word, sort = T)
+Practice_August
+
+#September speech
+Practice_September <- Practice_tidy %>% filter(doc_id == "September.txt") %>% count(doc_id,word, sort = T) %>% filter(word != "â")
+Practice_September
+
+#November speech
+Practice_November <- Practice_tidy %>% filter(doc_id == "November.pdf") %>% count(doc_id,word, sort = T) 
+Practice_November
+
+#Using tf-idf, identify 10 most important words for each speech
+
+Practice_tidy1 <- Practice %>% tibble() %>%
+  unnest_tokens(word, text)%>% count(doc_id,word,sort = T)
+
+## Total words
+
+total_words1 <- Practice_tidy1 %>% group_by(doc_id) %>% 
+  summarize(total = sum(n))
+
+## Left join
+Practice_tidy2 <- left_join(Practice_tidy1, total_words1)
+Practice_tidy2
+
+##tfidf
+Practice_tfidf <- Practice_tidy2 %>%
+  bind_tf_idf(word, doc_id , n) %>% arrange(desc(tf_idf)) 
+Practice_tfidf
+```
+
 
 
 
