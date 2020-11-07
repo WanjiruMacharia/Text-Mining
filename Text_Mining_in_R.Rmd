@@ -67,7 +67,7 @@ Data_text <- read.delim("Speeches/March.txt", sep = "\t")
 Data_text2 <- read.table("Speeches/March.txt", sep = "\t")
 
 #Read a pdf document
-Data_pdf <- pdf_text("July.pdf")
+Data_pdf <- pdf_text("Speeches/May1.pdf")
 ```
 
 ### **Reading data using the readtext package**
@@ -79,11 +79,11 @@ Data_pdf <- pdf_text("July.pdf")
 ```{r}
 
 ## read one file
-Text1 <- readtext("Speeches/May1.pdf")
+Text1 <- readtext("Speeches/June.docx")
 Text1
 
 ## read multiple txt files
-Text2 <- readtext("Speeches/*.pdf")
+Text2 <- readtext("Speeches/*.docx")
 Text2
 
 ## read all files
@@ -96,22 +96,22 @@ Speeches
 
 - Once we have loaded the data, the next step is to tidy the data.
 - Tidy text data has one observation per row.
-- We use unnest_tokens() to convert the data into a tidy format. Unnest_tokens() also removes punctuation, converts all words to lower case and retains other columns.
+- We use unnest_tokens() to convert the data into a tidy format. Unnest_tokens() also removes punctuation, converts all words to lower case and retains other columns. 
 - We will also remove stopwords. Stop words are words that are very common in text data but are not informative e.g. of, this, and, because e.t.c.
 - We will also remove numbers and funny symbols from the data.
 - tidytext functions work well with data frames.
 
 ```{r}
 #### Data frame
-Data4 <- tibble(text = Data)
+Data4 <- tibble(line =1,text = Data)
 #### Unnest tokens and remove stopwords
 Data5 <- Data4 %>%
   unnest_tokens(word, text) %>% 
   count(word,sort = T)
 
+tidytext::stop_words
 ##anti_join functions looks for words in our dataset that are in the stop_words dictionary and removes them from our dataset.
 Data6 <- Data5 %>% anti_join(stop_words) %>% 
-  count(word,sort = T)
   
 ```
 
@@ -120,7 +120,7 @@ Data6 <- Data5 %>% anti_join(stop_words) %>%
 - We can use the gsub function: gsub(pattern, replacement, x).
 - sub function is similar to gsub function. The only difference between the two is, sub replaces only the first match.
 
-```{R}
+```{r}
 x <- "2020 has been a 2020 hard year"
 Numbers <- sub("2020","",x); Numbers
 Numbers1 <- gsub("2020", "",x); Numbers1
@@ -129,11 +129,11 @@ Numbers1 <- gsub("2020", "",x); Numbers1
 - Other string manipulation functions are; grep , grepl, substr, stringr functions, regexpr.
 - grep and grepl are used for pattern checking and string replacement. 
 - grepl returns TRUE when a pattern is found in the corresponding character string.
--grep returns returns a vector of indices of the character strings that contains the pattern.
+-grep returns a vector of indices of the character strings that contains the pattern.
 - We will use grep function to remove numbers from our dataset.
 
 ```{r}
-Names <- c("Faith, Shelmith", "Shelmith2"); Names
+Names <- c("Faith, Shelmith"); Names
 grep("Fa",Names)
 grepl("Fa", Names)
 
@@ -147,7 +147,16 @@ Speeches_tidy <- Speeches %>% tibble() %>%
   ungroup()
 
 
-Speeches_tidy[-grep("^[0-9]+", Speeches_tidy$word),] 
+
+Speeches_tidy1 <- Speeches_tidy[-grep("[0-9]+", Speeches_tidy$word),] 
+Speeches_tidy2 <- Speeches_tidy1[-grep("kenya", Speeches_tidy1$word),] 
+
+
+April <- Speeches_tidy2 %>% filter(doc_id == "April1.txt") 
+April
+June <- Speeches_tidy2 %>% filter(doc_id == "June.txt") 
+June
+
 ```
 
 ### **Visualization**
@@ -270,7 +279,7 @@ Speech_tfidf %>% filter(doc_id == "July1.txt")
 - bing classifies sentiments into two; positive and negative sentiments.
 - afinn uses a scoring of between -5 and 5. Negative scores represent negative sentiments while positive scores represent positive sentiments.
 - nrc lexicon categorizes words in a binary fashion (“yes”/“no”) into categories of positive, negative, anger, anticipation, disgust, fear, joy, sadness, surprise, and trust.
-- The total sentiments of  document are obtained by adding up the individual sentiment scores for each word in the text.
+
 
 ```{r}
 
@@ -278,6 +287,7 @@ Speech_tfidf %>% filter(doc_id == "July1.txt")
 get_sentiments("afinn")
 get_sentiments("bing")
 get_sentiments("nrc")
+
 ```
 
 
@@ -288,7 +298,7 @@ Sentiments <- Speeches %>% tibble() %>%
   anti_join(stop_words) %>% group_by(doc_id) %>% inner_join(get_sentiments("bing"))
 Sentiments
 
-Sentiments %>% filter(doc_id == "May1.txt") %>% group_by(sentiment) %>% count(sentiment, sort = T)
+Sentiments %>% filter(doc_id == "May1.txt") %>%  group_by(sentiment) %>% count(sentiment, sort = T)
 
 ```
 
@@ -300,8 +310,8 @@ Perform the following tasks:
 1. Load the data into Rstudio
 2. Convert the data into a tidy text format, remove stopwords and numbers
 3. Identify the 10 most common words from each speech.
-4. Show the most 10 common words on a ggplot chart and a word cloud.
-4. Using tf-idf, identify 10 most important words for each speech
+4. Show the most 10 common words on a ggplot bar chart and a word cloud.
+4. Using tf-idf, identify 10 most important words from each speech.
 5. Perform sentiment analysis using the "bing" lexicon and identify how many words were positive and how many were negative.
 
 
